@@ -1,8 +1,5 @@
 # [Sqids Odin](https://sqids.org/odin)
 
-[![npm version](https://img.shields.io/npm/v/sqids.svg)](https://www.npmjs.com/package/sqids)
-[![Downloads](https://img.shields.io/npm/dm/sqids)](https://www.npmjs.com/package/sqids)
-
 [Sqids](https://sqids.org/odin) (*pronounced "squids"*) is a small library that lets you **generate unique IDs from numbers**. It's good for link shortening, fast & URL-safe ID generation and decoding back into numbers for quicker database lookups.
 
 Features:
@@ -30,15 +27,17 @@ Not good for:
 
 ## 🚀 Getting started
 
-Copy the `sqids` folder to your project.
+Copy the `sqids` folder to your project and then import the package:
+
+```odin
+import "sqids"
+```
 
 ## 👩‍💻 Examples
 
 Simple encode & decode:
 
 ```odin
-import "sqids"
-
 s, err := sqids.init()
 if err != .None {
   // init failed
@@ -62,8 +61,6 @@ defer delete(numbers) // caller owns the memory
 Enforce a *minimum* length for IDs:
 
 ```odin
-import "sqids"
-
 s, err := sqids.init({
   min_length = 10,
 })
@@ -83,11 +80,13 @@ defer delete(numbers)
 Randomize IDs by providing a custom alphabet:
 
 ```odin
-import "sqids"
-
 s, err := sqids.init({
   alphabet = "FxnXM1kBN6cuhsAvjW3Co7l2RePyY8DwaU04Tzt9fHQrqSVKdpimLGIJOgb5ZE",
 })
+if err != .None {
+  // init failed
+  return
+}
 
 id, _ := sqids.encode(s, {1, 2, 3}) // "B4aajs"
 defer delete(id)
@@ -99,11 +98,13 @@ defer delete(numbers)
 Prevent specific words from appearing anywhere in the auto-generated IDs:
 
 ```odin
-import "sqids"
-
 s, err := sqids.init({
   blocklist = []string{"86Rf07"},
 })
+if err != .None {
+  // init failed
+  return
+}
 
 id, _ := sqids.encode(s, {1, 2, 3}) // "se8ojk"
 defer delete(id)
@@ -115,10 +116,6 @@ defer delete(numbers)
 Use your own allocator:
 
 ```odin
-import "sqids"
-
-// ...
-
 id, _ := sqids.encode(s, {1,2,3}, allocator = my_allocator)
 defer delete(id)
 ```
