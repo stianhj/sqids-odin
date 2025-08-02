@@ -32,7 +32,7 @@ Error :: enum {
   Reached_Max_Attempts,
 }
 
-init :: proc(opts := Options{}, allocator := context.allocator) -> (Sqids, Error) {
+init :: proc(opts := Options{}, allocator := context.allocator, temp_allocator := context.temp_allocator) -> (Sqids, Error) {
   alphabet := default_options.alphabet if opts.alphabet == "" else opts.alphabet
   min_length := default_options.min_length if opts.min_length == 0 else opts.min_length
   blocklist: []string
@@ -50,7 +50,8 @@ init :: proc(opts := Options{}, allocator := context.allocator) -> (Sqids, Error
     return {}, .Alphabet_Too_Short
   }
 
-  alphabet_set := make(map[rune]struct{}, len(alphabet), context.temp_allocator)
+  alphabet_set := make(map[rune]struct{}, len(alphabet), temp_allocator)
+  defer delete(alphabet_set)
   for c in alphabet {
     alphabet_set[c] = {}
   }
@@ -59,7 +60,7 @@ init :: proc(opts := Options{}, allocator := context.allocator) -> (Sqids, Error
     return {}, .Alphabet_Repeating_Character
   }
 
-  filtered_blocklist := create_filtered_blocklist(alphabet, blocklist[:], allocator)
+  filtered_blocklist := create_filtered_blocklist(alphabet, blocklist[:], allocator, temp_allocator)
 
   alphabet_u8 := make([]u8, len(alphabet), allocator)
   for c, i in alphabet {
@@ -75,23 +76,24 @@ init :: proc(opts := Options{}, allocator := context.allocator) -> (Sqids, Error
   }, .None
 }
 
-deinit :: proc(s: Sqids) {
-  delete(s.alphabet)
+deinit :: proc(s: Sqids, allocator := context.allocator) {
+  delete(s.alphabet, allocator)
   delete(s.blocklist)
 }
 
-encode :: proc(s: Sqids, numbers: []uint, allocator := context.allocator) -> (string, Error) {
+encode :: proc(s: Sqids, numbers: []uint, allocator := context.allocator, temp_allocator := context.temp_allocator) -> (string, Error) {
   if len(numbers) == 0 { return "", .None }
 
-  return encode_numbers(s, numbers, 0, allocator)
+  return encode_numbers(s, numbers, 0, allocator, temp_allocator)
 }
 
-encode_numbers :: proc(s: Sqids, numbers: []uint, increment := 0, allocator := context.allocator) -> (string, Error) {
+encode_numbers :: proc(s: Sqids, numbers: []uint, increment := 0, allocator := context.allocator, temp_allocator := context.temp_allocator) -> (string, Error) {
   if increment > len(s.alphabet) {
     return "", .Reached_Max_Attempts
   }
 
-  alphabet := slice.clone(s.alphabet, context.temp_allocator)
+  alphabet := slice.clone(s.alphabet, temp_allocator)
+  defer delete(alphabet, temp_allocator)
 
   offset := len(numbers)
   for n, i in numbers {
@@ -113,7 +115,8 @@ encode_numbers :: proc(s: Sqids, numbers: []uint, increment := 0, allocator := c
 
   append(&ret, prefix)
   for n, i in numbers {
-    x := to_id(alphabet[1:], n, context.temp_allocator)
+    x := to_id(alphabet[1:], n, temp_allocator)
+    defer delete(x, temp_allocator)
     append_elems(&ret, ..x)
 
     if i < len(numbers)-1 {
@@ -134,15 +137,15 @@ encode_numbers :: proc(s: Sqids, numbers: []uint, increment := 0, allocator := c
 
   id := strings.clone_from_bytes(ret[:], allocator)
 
-  if is_blocked_id(s, id) {
+  if is_blocked_id(s, id, temp_allocator) {
     delete(id, allocator)
-    return encode_numbers(s, numbers, increment+1, allocator)
+    return encode_numbers(s, numbers, increment+1, allocator, temp_allocator)
   }
 
   return id, .None
 }
 
-decode :: proc(s: Sqids, input_id: string, allocator := context.allocator) -> []uint {
+decode :: proc(s: Sqids, input_id: string, allocator := context.allocator, temp_allocator := context.temp_allocator) -> []uint {
   if len(input_id) == 0 { return []uint{} }
 
   // we have a multibyte char in the id
@@ -150,8 +153,11 @@ decode :: proc(s: Sqids, input_id: string, allocator := context.allocator) -> []
     return []uint{}
   }
 
-  alphabet := slice.clone(s.alphabet, context.temp_allocator)
-  id_u8 := make([]u8, len(input_id), context.temp_allocator)
+  alphabet := slice.clone(s.alphabet, temp_allocator)
+  defer delete(alphabet, temp_allocator)
+
+  id_u8 := make([]u8, len(input_id), temp_allocator)
+  defer delete(id_u8, temp_allocator)
 
   for c, i in input_id {
      id_u8[i] = u8(c)
@@ -237,15 +243,17 @@ to_number :: proc(alphabet: []u8, s: []u8) -> uint {
   return num
 }
 
-create_filtered_blocklist :: proc(alphabet: string, blocklist: []string, allocator := context.allocator) -> Blocklist {
+create_filtered_blocklist :: proc(alphabet: string, blocklist: []string, allocator := context.allocator, temp_allocator := context.temp_allocator) -> Blocklist {
   ret := make(Blocklist, allocator)
 
-  lcalphabet := strings.to_lower(alphabet, context.temp_allocator)
+  lcalphabet := strings.to_lower(alphabet, temp_allocator)
+  defer delete(lcalphabet, temp_allocator)
 
   for word in blocklist {
     if len(word) < 3 { continue }
 
-    lcword := strings.to_lower(word, context.temp_allocator)
+    lcword := strings.to_lower(word, temp_allocator)
+    defer delete(lcword, temp_allocator)
 
     for c in lcword {
       if !strings.contains_rune(lcalphabet, c) {
@@ -259,8 +267,9 @@ create_filtered_blocklist :: proc(alphabet: string, blocklist: []string, allocat
   return ret
 }
 
-is_blocked_id :: proc(s: Sqids, id: string, allocator := context.allocator) -> bool {
-  lower_id := strings.to_lower(id, context.temp_allocator)
+is_blocked_id :: proc(s: Sqids, id: string, allocator := context.allocator, temp_allocator := context.temp_allocator) -> bool {
+  lower_id := strings.to_lower(id, temp_allocator)
+  defer delete(lower_id, temp_allocator)
 
   for word, has_number in s.blocklist {
     if len(word) > len(lower_id) {
