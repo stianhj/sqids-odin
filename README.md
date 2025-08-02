@@ -27,11 +27,19 @@ Not good for:
 
 ## 🚀 Getting started
 
-Copy the `sqids` folder to your project and then import the package:
+Add the pacakge to your project as a submodule:
+
+```
+git submodule add https://github.com/stianhj/sqids-odin external/sqids
+```
+
+and import with:
 
 ```odin
-import "sqids"
+import "external/sqids"
 ```
+
+(or just [download](https://github.com/stianhj/sqids-odin/archive/refs/heads/main.zip) the repo and put `sqids.odin` and `blocklist.odin` in a folder and import)
 
 ## 👩‍💻 Examples
 

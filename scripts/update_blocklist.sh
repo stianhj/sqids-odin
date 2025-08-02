@@ -17,4 +17,4 @@ default_blocklist := [?]string{ $blocklist }
 HEREDOC
 )
 
-echo "$blfile" > sqids/blocklist.odin
+echo "$blfile" > blocklist.odin
