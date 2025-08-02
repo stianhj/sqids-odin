@@ -1,5 +1,7 @@
 # [Sqids Odin](https://sqids.org/odin)
 
+[![Github Actions](https://img.shields.io/github/actions/workflow/status/stianhj/sqids-odin/tests.yml)](https://github.com/stianhj/sqids-odin/actions)
+
 [Sqids](https://sqids.org/odin) (*pronounced "squids"*) is a small library that lets you **generate unique IDs from numbers**. It's good for link shortening, fast & URL-safe ID generation and decoding back into numbers for quicker database lookups.
 
 Features:
